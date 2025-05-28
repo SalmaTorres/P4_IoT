@@ -10,10 +10,7 @@
 
 #define GAS_SENSOR_PIN 34
 #define BUZZER_PIN     25
-#define PWMA 23
-#define AIN1 21 
-#define AIN2 22
-#define STBY 19
+#define PIN_MOSFET    12
 #define SERVO_PIN      27
 
 const char* WIFI_SSID = "holi holi holi";
@@ -107,7 +104,7 @@ MQTTClientManager mqttClient(wiFiClient, MQTT_BROKER, MQTT_PORT, CLIENT_ID);
 
 GasSensor gasSensor(GAS_SENSOR_PIN);
 Buzzer buzzer(BUZZER_PIN);
-Fan fan(PWMA, AIN1, AIN2, STBY);
+Fan fan(PIN_MOSFET);
 ValveServo valve(SERVO_PIN);
 
 String lastGasLevelState = "seguro";
