@@ -6,14 +6,13 @@
 class Buzzer {
 private:
   byte pin;
-  bool state;
+  String state;
 
 public:
   Buzzer(byte pin);
   void turnOn();
   void turnOff();
-  void setState(bool state);
-  bool isOn();
+  String getState();
 };
 
 #endif

@@ -5,15 +5,17 @@
 
 class Fan {
 private:
-  byte pin;
-  bool state;
+  byte pwma;
+  byte ain1;
+  byte ain2;
+  byte stby;
+  String state;
 
 public:
-  Fan(byte pin);
+  Fan(byte pwma, byte ain1, byte ain2, byte stby);
   void turnOn();
   void turnOff();
-  void setState(bool state);
-  bool isOn();
+  String getState();
 };
 
 #endif

@@ -7,8 +7,8 @@
 class ValveServo {
 private:
   byte pin;
-  bool isOpen;
-  Servo servo;
+  String state;
+  Servo valve;
 
 public:
   ValveServo(byte pin);
@@ -16,8 +16,7 @@ public:
   void open(); 
   void close(); 
   void stop(); 
-  void setState(bool open);
-  bool getState();
+  String getState();
 };
 
 #endif

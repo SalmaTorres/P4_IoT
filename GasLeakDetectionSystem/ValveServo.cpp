@@ -2,37 +2,37 @@
 
 ValveServo::ValveServo(byte pin) {
   this->pin = pin;
-  this->isOpen = false;
+  this->state = "closed";
 }
 
 void ValveServo::begin() {
-  servo.setPeriodHertz(50);
-  servo.attach(pin, 1000, 2000); 
-  stop();
+  valve.setPeriodHertz(50);
 }
 
 void ValveServo::open() {
-  servo.writeMicroseconds(1700);
+  valve.attach(pin, 1000, 2000);
+  Serial.println("Abriendo válvula...");
+  valve.writeMicroseconds(1700);
   delay(700);
+  state = "open";
   stop();
-  isOpen = true;
+  Serial.println("Válvula abierta.");
 }
 
 void ValveServo::close() {
-  servo.writeMicroseconds(1300);
+  valve.attach(pin, 1000, 2000);
+  Serial.println("Cerrando válvula...");
+  valve.writeMicroseconds(1300);
   delay(700);
+  state = "closed";
   stop();
-  isOpen = false;
+  Serial.println("Válvula cerrada.");
 }
 
 void ValveServo::stop() {
-  servo.writeMicroseconds(1500);
+  valve.detach();
 }
 
-void ValveServo::setState(bool open) {
-  open ? this->open() : this->close();
-}
-
-bool ValveServo::getState() {
-  return isOpen;
+String ValveServo::getState() {
+  return state;
 }

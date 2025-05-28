@@ -21,7 +21,7 @@ public:
   void calibrate();
   void read(); 
   int getPPM();  
-  String getGasLevelState(); 
+  String getGasLevel(); 
   float getRo(); 
 };
 

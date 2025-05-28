@@ -1,30 +1,21 @@
 #include "Buzzer.h"
 
 Buzzer::Buzzer(byte pin) {
-  this->pin =pin;
-  this->state=false;
+  this->pin = pin;
+  this->state = "off";
   pinMode(pin, OUTPUT);
-  turnOff();
 }
 
 void Buzzer::turnOn() {
-    state = true;
-    digitalWrite(pin, HIGH);
+  digitalWrite(pin, HIGH);
+  state = "on";
 }
 
 void Buzzer::turnOff() {
-    state = false;
-    digitalWrite(pin, LOW);
+  digitalWrite(pin, LOW);
+  state = "off";
 }
 
-void Buzzer::setState(bool state) {
-    this->state = state;
-    if(state)
-      turnOn();
-    else
-      turnOff();
-}
-
-bool Buzzer::isOn() {
-    return state;
+String Buzzer::getState() {
+  return state;
 }

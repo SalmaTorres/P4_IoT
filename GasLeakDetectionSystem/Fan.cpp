@@ -1,30 +1,31 @@
 #include "Fan.h"
 
-Fan::Fan(byte pin) {
-  this->pin = pin;
-  this->state = false;
-  pinMode(pin, OUTPUT);
-  digitalWrite(pin, LOW); 
+Fan::Fan(byte pwma, byte ain1, byte ain2, byte stby) {
+  this->pwma = pwma;
+  this->ain1 = ain1;
+  this->ain2 = ain2;
+  this->stby = stby;
+  this->state = "off";
+  pinMode(pwma, OUTPUT);
+  pinMode(ain1, OUTPUT);
+  pinMode(ain2, OUTPUT);
+  pinMode(stby, OUTPUT);
 }
 
 void Fan::turnOn() {
-  state = true;
-  digitalWrite(pin, HIGH);
+  state = "on";
+  digitalWrite(ain1, HIGH);
+  digitalWrite(ain2, LOW);
+  digitalWrite(pwma, HIGH);
 }
 
 void Fan::turnOff() {
-  state = false;
-  digitalWrite(pin, LOW);
+  state = "off";
+  digitalWrite(pwma, LOW);
+  digitalWrite(ain1, LOW);
+  digitalWrite(ain2, LOW);
 }
 
-void Fan::setState(bool state) {
-  this->state = state;
-  if(state)
-    turnOn();
-  else
-    turnOff();
-}
-
-bool Fan::isOn() {
+String Fan::getState() {
   return state;
 }

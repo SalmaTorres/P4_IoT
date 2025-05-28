@@ -10,7 +10,10 @@
 
 #define GAS_SENSOR_PIN 34
 #define BUZZER_PIN     25
-#define FAN_PIN        26
+#define PWMA 23
+#define AIN1 21 
+#define AIN2 22
+#define STBY 19
 #define SERVO_PIN      27
 
 const char* WIFI_SSID = "holi holi holi";
@@ -104,99 +107,144 @@ MQTTClientManager mqttClient(wiFiClient, MQTT_BROKER, MQTT_PORT, CLIENT_ID);
 
 GasSensor gasSensor(GAS_SENSOR_PIN);
 Buzzer buzzer(BUZZER_PIN);
-Fan fan(FAN_PIN);
+Fan fan(PWMA, AIN1, AIN2, STBY);
 ValveServo valve(SERVO_PIN);
 
-String lastGasLevelState = "";
-bool buzzerState = false;
-bool fanState = false;
-bool valveState = false;
+String lastGasLevelState = "seguro";
 
 StaticJsonDocument<256> inputDoc;
 StaticJsonDocument<512> outputDoc;
 char outputBuffer[512];
 
 void reportStates() {
+  if (!mqttClient.isConnected()) {
+    Serial.println("MQTT desconectado, intentando reconectar antes de reportar...");
+    mqttClient.reconnect();
+    mqttClient.subscribe(UPDATE_DELTA_TOPIC);
+    delay(500); 
+  }
+
+  outputDoc.clear();
   outputDoc["state"]["reported"]["gasLevel_ppm"] = gasSensor.getPPM();
-  outputDoc["state"]["reported"]["gasLevel_state"] = gasSensor.getGasLevelState();
-  outputDoc["state"]["reported"]["buzzer_state"] = buzzerState ? "on" : "off";
-  outputDoc["state"]["reported"]["fan_state"] = fanState ? "on" : "off";
-  outputDoc["state"]["reported"]["valve_state"] = valveState ? "open" : "closed";
+  outputDoc["state"]["reported"]["gasLevel_state"] = gasSensor.getGasLevel();
+  outputDoc["state"]["reported"]["buzzer_state"] = buzzer.getState();
+  outputDoc["state"]["reported"]["fan_state"] = fan.getState();
+  outputDoc["state"]["reported"]["valve_state"] = valve.getState();
 
   serializeJson(outputDoc, outputBuffer);
-  mqttClient.publish(UPDATE_TOPIC, outputBuffer);
-}
-
-void setBuzzer() {
-  buzzer.setState(buzzerState);
-  reportStates();
-}
-
-void setFan() {
-  fan.setState(fanState);
-  reportStates();
-}
-
-void setValve() {
-  valve.setState(valveState);
-  reportStates();
+  Serial.println(outputBuffer);
+  bool success = mqttClient.publish(UPDATE_TOPIC, outputBuffer);
+  if (success) {
+    Serial.println("Estados reportados exitosamente");
+  } else {
+    Serial.println("ERROR: Fallo al reportar estados");
+  }
 }
 
 void callback(char* topic, byte* payload, unsigned int length) {
   String message;
-  for (int i = 0; i < length; i++) message += String((char) payload[i]);
-  Serial.println("Message from topic " + String(topic) + ":" + message);
+  for (int i = 0; i < length; i++) {
+    message += String((char) payload[i]);
+  }
+  Serial.println("Message from topic " + String(topic) + ": " + message);
+  inputDoc.clear();
+  DeserializationError err = deserializeJson(inputDoc, payload, length);
+  if (err) {
+    Serial.println("ERROR parseando JSON: " + String(err.c_str()));
+    return;
+  }
+  Serial.println("JSON parseado correctamente");
 
-  DeserializationError err = deserializeJson(inputDoc, payload);
-  if (!err) {
-    if (String(topic) == UPDATE_DELTA_TOPIC) {
-      JsonObject state = inputDoc["state"];
-
-      if (state.containsKey("buzzer_state")) {
-        buzzerState = state["buzzer_state"].as<bool>();
-        setBuzzer();
-      }
-
-      if (state.containsKey("fan_state")) {
-        fanState = state["fan_state"].as<bool>();
-        setFan();
-      }
-
-      if (state.containsKey("valve_state")) {
-        valveState = state["valve_state"].as<bool>();
-        setValve();
+  if (String(topic) == UPDATE_DELTA_TOPIC) {
+    JsonObject state = inputDoc["state"];
+    if (state.containsKey("buzzer_state")) {
+      String newBuzzerState = state["buzzer_state"].as<String>();
+      String currentBuzzerState = buzzer.getState();
+      if (newBuzzerState != currentBuzzerState) {
+        if (newBuzzerState == "on") {
+          buzzer.turnOn();
+        } else  {
+          buzzer.turnOff();
+        }
+        delay(100); 
+        reportStates();
       }
     }
+
+    if (state.containsKey("fan_state")) {
+      String newFanState = state["fan_state"].as<String>();
+      String currentFanState = fan.getState();
+      if (newFanState != currentFanState) {
+        if (newFanState == "on") {
+          fan.turnOn();
+        } else {
+          fan.turnOff();
+        }
+        delay(100);
+        reportStates();
+      }
+    }
+
+    if (state.containsKey("valve_state")) {
+      String newValveState = state["valve_state"].as<String>();
+      String currentValveState = valve.getState();
+      if (newValveState != currentValveState) {
+        if(newValveState == "open") {
+          valve.open();
+        } else {
+          valve.close();
+        }
+        delay(100);
+        reportStates();
+      }
+    }
+    Serial.println("=== FIN PROCESAMIENTO CALLBACK ===");
+  } else {
+    Serial.println("Tópico no reconocido: " + String(topic));
   }
 }
 
 void setup() {
   Serial.begin(115200);
+  valve.begin();
+  Serial.println("Iniciando sistema de detección de gas...");
   wifiManager.connect();
-
   wiFiClient.setCACert(AMAZON_ROOT_CA1);
   wiFiClient.setCertificate(CERTIFICATE);
   wiFiClient.setPrivateKey(PRIVATE_KEY);
-
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
   mqttClient.setCallback(callback); 
+
+  Serial.println("Conectando a MQTT...");
+  if (!mqttClient.isConnected()) {
+    mqttClient.reconnect();
+  }
+
+  Serial.println("Suscribiéndose a: " + String(UPDATE_DELTA_TOPIC));
   mqttClient.subscribe(UPDATE_DELTA_TOPIC);
 
+  Serial.println("Inicializando componentes...");
   gasSensor.calibrate();
-  buzzer.turnOff();
-  fan.turnOff();
-  valve.begin();
+  delay(500); 
+  reportStates();
 }
 
 void loop() {
-  if (!mqttClient.isConnected()) mqttClient.reconnect();
+  if (!mqttClient.isConnected()) {
+    Serial.println("Reconectando MQTT...");
+    mqttClient.reconnect();
+    mqttClient.subscribe(UPDATE_DELTA_TOPIC);
+  }
   mqttClient.loop();
-
   gasSensor.read();
-  String current = gasSensor.getGasLevelState();
-
-  if (current != lastGasLevelState) {
-    lastGasLevelState = current;
+  String currentGasState = gasSensor.getGasLevel();
+  if (currentGasState != lastGasLevelState) {
+    Serial.println("Cambio en nivel de gas: " + lastGasLevelState + " -> " + currentGasState);
+    lastGasLevelState = currentGasState;
+    if(gasSensor.getGasLevel() == "revisar"){
+      valve.close();
+    }
     reportStates();
   }
+   delay(500);
 }

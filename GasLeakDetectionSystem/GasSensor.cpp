@@ -72,7 +72,7 @@ int GasSensor::getPPM() {
   return ppm;
 }
 
-String GasSensor::getGasLevelState() {
+String GasSensor::getGasLevel() {
   return gasLevelState;
 }
 

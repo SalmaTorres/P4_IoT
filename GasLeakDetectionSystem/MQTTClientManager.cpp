@@ -2,7 +2,10 @@
 #include <Arduino.h>
 
 MQTTClientManager::MQTTClientManager(WiFiClientSecure& wifiClient, const char* broker, int port, const char* clientId)
-: wifiClient(wifiClient), client(wifiClient), broker(broker), port(port), clientId(clientId), callback(nullptr) {}
+  : wifiClient(wifiClient), client(wifiClient), broker(broker), port(port), clientId(clientId), callback(nullptr),
+    lastReconnectAttempt(0), lastKeepAlive(0), isReconnecting(false), reconnectAttempts(0) {
+  client.setServer(broker, port);
+}
 
 void MQTTClientManager::setCallback(void (*cb)(char*, byte*, unsigned int)) {
   callback = cb;
@@ -10,26 +13,42 @@ void MQTTClientManager::setCallback(void (*cb)(char*, byte*, unsigned int)) {
 }
 
 void MQTTClientManager::reconnect() {
-  while (!client.connected()) {
-    Serial.print("Conectando a MQTT...");
-    if (client.connect(clientId)) {
-      Serial.println("conectado");
-    } else {
-      Serial.print("fallo, rc=");
-      Serial.print(client.state());
-      Serial.println(". Intentar de nuevo en 5 segundos.");
-      delay(5000);
-    }
+  unsigned long now = millis();
+  if (client.connected()) {
+    return; // Ya conectado
   }
+  if (now - lastReconnectAttempt < RECONNECT_INTERVAL) {
+    return; // Esperar el intervalo para reintento
+  }
+  Serial.print("Intentando reconectar MQTT...");
+  if (client.connect(clientId)) {
+    Serial.println("conectado");
+    reconnectAttempts = 0;
+  } else {
+    Serial.print("fallo, rc=");
+    Serial.print(client.state());
+    Serial.println(". Intentar de nuevo en 5 segundos.");
+    reconnectAttempts++;
+  }
+  lastReconnectAttempt = now;
 }
 
 void MQTTClientManager::subscribe(const char* topic) {
-  client.subscribe(topic);
-  Serial.println("Subscrito a " + String(topic));
+  if (client.subscribe(topic)) {
+    Serial.println("Subscrito a " + String(topic));
+  } else {
+    Serial.println("Fallo al subscribirse a " + String(topic));
+  }
 }
 
-void MQTTClientManager::publish(const char* topic, const char* payload) {
-  client.publish(topic, payload);
+bool MQTTClientManager::publish(const char* topic, const char* payload) {
+  bool result = client.publish(topic, payload);
+  if (result) {
+    Serial.println("Mensaje publicado en " + String(topic));
+  } else {
+    Serial.println("Fallo al publicar en " + String(topic));
+  }
+  return result;
 }
 
 void MQTTClientManager::loop() {
