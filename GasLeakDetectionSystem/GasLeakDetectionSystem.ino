@@ -8,10 +8,10 @@
 #include "Fan.h"
 #include "ValveServo.h"
 
-#define GAS_SENSOR_PIN 34
+#define GAS_SENSOR_PIN 26
 #define BUZZER_PIN     25
 #define PIN_MOSFET     27
-#define SERVO_PIN      26
+#define SERVO_PIN      15
 
 const char* WIFI_SSID = "holi holi holi";
 const char* WIFI_PASS = "acasapete";
@@ -107,7 +107,7 @@ Buzzer buzzer(BUZZER_PIN);
 Fan fan(PIN_MOSFET);
 ValveServo valve(SERVO_PIN);
 
-String lastGasLevelState = "seguro";
+String lastGasLevelState = "";
 
 StaticJsonDocument<256> inputDoc;
 StaticJsonDocument<512> outputDoc;
@@ -204,6 +204,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
 void setup() {
   Serial.begin(115200);
   valve.begin();
+  
   Serial.println("Iniciando sistema de detección de gas...");
   wifiManager.connect();
   wiFiClient.setCACert(AMAZON_ROOT_CA1);
@@ -222,7 +223,7 @@ void setup() {
 
   Serial.println("Inicializando componentes...");
   gasSensor.calibrate();
-  delay(500); 
+  delay(1000); 
   reportStates();
 }
 
@@ -235,6 +236,7 @@ void loop() {
   mqttClient.loop();
   gasSensor.read();
   String currentGasState = gasSensor.getGasLevel();
+  Serial.println(gasSensor.getPPM());
   if (currentGasState != lastGasLevelState) {
     Serial.println("Cambio en nivel de gas: " + lastGasLevelState + " -> " + currentGasState);
     lastGasLevelState = currentGasState;
@@ -243,5 +245,5 @@ void loop() {
     }
     reportStates();
   }
-   delay(500);
+   delay(1000);
 }
