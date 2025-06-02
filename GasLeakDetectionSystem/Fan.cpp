@@ -8,12 +8,12 @@ Fan::Fan(byte pin) {
 
 void Fan::turnOn() {
   state = "on";
-  digitalWrite(pin, HIGH);
+  digitalWrite(pin, LOW);
 }
 
 void Fan::turnOff() {
   state = "off";
-  digitalWrite(pin, LOW);
+  digitalWrite(pin, HIGH);
 }
 
 String Fan::getState() {

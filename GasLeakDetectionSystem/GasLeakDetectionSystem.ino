@@ -10,8 +10,8 @@
 
 #define GAS_SENSOR_PIN 34
 #define BUZZER_PIN     25
-#define PIN_MOSFET    12
-#define SERVO_PIN      27
+#define PIN_MOSFET     27
+#define SERVO_PIN      26
 
 const char* WIFI_SSID = "holi holi holi";
 const char* WIFI_PASS = "acasapete";
